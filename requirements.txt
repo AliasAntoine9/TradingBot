@@ -1,0 +1,7 @@
+pandas
+requests
+DateTime
+schedule
+openpyxl
+jproperties
+sqlalchemy

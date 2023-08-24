@@ -1,0 +1,6 @@
+venv*/
+databases/
+drafts/
+*.db
+*.idea/
+*__pycache__/
