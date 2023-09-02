@@ -12,61 +12,70 @@ class JsonParser:
 
     def __init__(self):
         self.df = DataFrame()
-        self.df.candles = pd.DataFrame({
-            "closetime": [],
-            "close": [],
-            "opentime": [],
-            "open": [],
-            "high": [],
-            "low": [],
-            "volume": []
-        })
-        self.dt_format = "%Y-%m-%d %H:%M:%S"
-        self.response = dict()
+        self.df.candles = pd.DataFrame(
+            {
+                "closetime": [],
+                "close": [],
+                "opentime": [],
+                "open": [],
+                "high": [],
+                "low": [],
+                "volume": []
+            }
+        )
+        self.datetime_format = "%Y-%m-%d %H:%M:%S"
+        self.response = {}
 
-    def load_binance_response_in_list(self, response):
+    def transform_to_df(self, response) -> pd.DataFrame:
+        """Entry point of the parser object"""
+        self._transform_binance_response(response)
+        self._change_datetime_format()
+        self._create_candles_df()
+        return self.df.candles
+
+    def _transform_binance_response(self, response) -> None:
+        """This method check if Binance response is readable. If yes, this method transforms the reponse into a list."""
         try:
             self.response = response.json()
         except:
             raise TypeError
 
-    def change_datetime_format(self):
-        dt_format = self.dt_format
+    def _change_datetime_format(self) -> None:
+        """This method converts Millisecond Unix Timestamp into pandas datetime format"""
+        format = self.datetime_format
         for candle in self.response:
             # candle[i] is a MillisecondsUnixTimestamp string
             # 1st -> Convert the string candle[i] to int
             # 2nd -> Convert MillisecondsUnixTimestamp to UnixTimeStamp
             # 3rd -> Convert UnixTimestamp to string well formatted
-            str_opentime_formatted = datetime.fromtimestamp(int(candle[0])/1000).strftime(dt_format)
-            str_closetime_formatted = datetime.strftime(datetime.fromtimestamp(int(candle[6]) / 1000),
-                                                        dt_format)
+            str_opentime_formatted = datetime.fromtimestamp(int(candle[0])/1000).strftime(format)
+            str_closetime_formatted = datetime.strftime(datetime.fromtimestamp(int(candle[6]) / 1000), format)
 
             # Convert string to datetime64 format
-            candle[0] = datetime.strptime(str_opentime_formatted, dt_format)
-            candle[6] = datetime.strptime(str_closetime_formatted, dt_format)
+            candle[0] = datetime.strptime(str_opentime_formatted, format)
+            candle[6] = datetime.strptime(str_closetime_formatted, format)
 
-    def feed_candles_df(self):
+    def _create_candles_df(self) -> None:
+        """This method creates a df which contains all the candles retrieved from Binance API"""
         candles = self.df.candles
+
         for candle in self.response:
             candles = candles.append(
-                pd.Series({
-                    "closetime": candle[6],
-                    "close": candle[4],
-                    "opentime": candle[0],
-                    "open": candle[1],
-                    "high": candle[2],
-                    "low": candle[3],
-                    "volume": candle[5]
-                }),
-                ignore_index=True)
+                pd.Series(
+                    {
+                        "closetime": candle[6],
+                        "close": candle[4],
+                        "opentime": candle[0],
+                        "open": candle[1],
+                        "high": candle[2],
+                        "low": candle[3],
+                        "volume": candle[5]
+                    }
+                ),
+                ignore_index=True
+                )
+            
         self.df.candles = candles
-
-    def transform_to_df(self, response):
-        self.load_binance_response_in_list(response)
-        self.change_datetime_format()
-        self.feed_candles_df()
-        # self.df_close.to_csv(f"{self.symbol}_close_{self.timestamp}.csv", index=False)
-        return self.df.candles
 
 
 # 1 candle is:

@@ -1,8 +1,5 @@
 from dataclasses import dataclass
 import pandas as pd
-from sqlalchemy import create_engine
-
-from utils.config import DB_URI
 
 
 @dataclass
@@ -22,7 +19,7 @@ class Candle:
     closetime: str = None
 
 
-def create_candle(series):
+def create_candle(series) -> Candle:
     df = series.to_frame().T
     return Candle(
         opentime=str({df["opentime"]}),
@@ -38,12 +35,16 @@ def create_candle(series):
 @dataclass
 class Position:
     symbol: str = None
+    opentime_trigger_candle: str = None
     opentime_buying_candle: str = None
     buying_timestamp: str = None
+    sales_timestamp: str = None
     buying_price: float = None
-    target_sales_price: float = None
+    profit_target_in_percentage: float = None
+    sales_price: float = None
     bet: float = None
     crypto_quantity: float = None
+    currency_couple: str = None
 
 
 class PreviousPositions:
@@ -54,26 +55,16 @@ class PreviousPositions:
         opened_positions = pd.DataFrame()
         closed_positions = pd.DataFrame()
 
-    def __init__(self, symbol):
+    def __init__(self, symbol: str):
         self.symbol = symbol
         self.df = self.Dataframe()
-        self.db_uri = DB_URI
-        self.get_positions()
+        self.get_positions(symbol)
 
-    def get_positions(self):
+    def get_positions(self, symbol: str) -> None:
         """This method allows to get the opened position for 1 symbol"""
 
         for status in ("opened", "closed"):
-            database = create_engine(self.db_uri, echo=True)
-            tb_name = f"{status}_positions"
 
-            try:
-                positions = pd.read_sql_table(
-                    table_name=tb_name,
-                    con=database
-                )
-            except ValueError:
-                print(f"No {status} positions already existing. A new df will be created")
-                positions = pd.DataFrame()
+
 
             setattr(self.df, f"{status}_positions", positions)

@@ -2,8 +2,8 @@ import pandas as pd
 from sqlalchemy import create_engine
 import logging
 
-from src.strategies.rsi.decision_rules import search_candle_to_buy
-from src.utils.tools import Candle, Position, PreviousPositions
+from strategies.rsi.decision_rules import search_candle_to_buy
+from utils.tools import Candle, Position, PreviousPositions
 
 logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%Y/%m/%d %H:%M:%S")
 
@@ -21,93 +21,77 @@ class Action:
         self.candles_tail = pd.DataFrame()
         self.previous_positions = PreviousPositions(self.symbol)
 
-    def run(self):
-        self.search_buying_signal()
-        self.search_selling_signal()
+    def buy_sell_crypto(self):
+        self._search_buying_signal()
+        self._search_selling_signal()
 
-    def candle_to_buy_is_the_last_candle(self):
-        print("wait")
+    def _candle_to_buy_is_the_last_candle(self):
         if self.candle_to_buy.closetime == self.candle_trigger.opentime:
             return True
         else:
             return False
 
-    def search_buying_signal(self):
+    def _search_buying_signal(self, is_selling_order=False) -> None:
+        """A buying order is passed when the multiple if condition is respected"""
         self.candle_to_buy, self.candle_trigger, self.candles_tail = search_candle_to_buy(self.candles)
         opened_positions = self.previous_positions.df.opened_positions
 
         if self.candle_to_buy is not None \
                 and self.candle_to_buy.opentime not in opened_positions["opentime_buying_candle"] \
-                and self.candle_to_buy_is_the_last_candle():
-            self.buy()
-            self.send_telegram_notification()
-            self.records_buying_movements()
+                and self._candle_to_buy_is_the_last_candle():
+            self._buy()
+            self._send_telegram_notification()
+            self._record_order(is_selling_order)
         else:
             logging.info(f"\n{self.symbol} | Nothing bought.\n")
 
-    def buy(self):
+    def _buy(self):
+        """This method is appying the buying on Binance"""
         # Make the buy order on Binance
-
-        # Save buying order by creating a new opened position
-        position = Position(
-            symbol=self.symbol,
-            opentime_buying_candle="",
-            buying_timestamp="",
-            buying_price=0.0,
-            target_sales_price=0.0,
-            bet=50.0,
-            crypto_quantity=0.0
-        )
         return
 
-    def send_telegram_notification(self):
+    def _send_telegram_notification(self):
         """Use Telegram API to get the notification that a buying order were passed"""
         return
 
-    def records_buying_movements(self):
-        """This method records buying position in the DB"""
-        # vetchain <=> The engine
-        db_uri = "sqlite:///vetchain.db"
-        vetchain = create_engine(db_uri, echo=True)
-        tb_name = f"{self.symbol}_opened_positions"
+    def _record_order(self, is_selling_record=False) -> None:
+        """This method records either buying or selling order into the DB"""
+        api = None
+        new_position = self._create_new_position(is_selling_record)
 
-        df_position = self.create_df_buying_position()
+        # Insert position in Sql database through the API of the project
+        api.post(new_position, is_selling_record)
 
-        # Insert position in Sql database
-        df_position.to_sql(tb_name, con=vetchain, if_exists="append", index=False)
-        logging.info("New position created")
 
-    def create_df_buying_position(self):
+    def _create_new_position(self, is_selling_record=False) -> pd.DataFrame:
+        """This method is either creating an opened or closed position"""
         new_position = pd.DataFrame(
-            {
-                "opentime_trigger_candle": [self.opentime_trigger_candle],
-                "opentime_buying_candle": [self.opentime_buying_candle],
-                "buying_timestamp": [self.buying_timestamp],
-                "buying_price": [self.buying_price],
-                "target_sales_price": [self.buying_price * 1.02],
-                "bet": [self.bet],
-                "crypto_quantity": [self.crypto_quantity],
-            }
-        )
+                {
+                    "opentime_trigger_candle": [self.opentime_trigger_candle],
+                    "opentime_buying_candle": [self.opentime_buying_candle],
+                    "buying_timestamp": [self.buying_timestamp],
+                    "buying_price": [self.buying_price],
+                    "target_sales_price": [self.buying_price * 1.02],
+                    "bet": [self.bet],
+                    "crypto_quantity": [self.crypto_quantity],
+                }
+            )
+        
+        if is_selling_record:
+            new_position["sales_timestamp"] = self.sales_timestamp
+            new_position["sales_price"] = self.sales_price
+
         return new_position
 
-    def search_selling_signal(self):
-        return
+    def _search_selling_signal(self, is_selling_order=True):
+        """A selling order is passed when the multiple if condition is respected"""
+        if ...:
+            self._sell()
+            self._send_telegram_notification()
+            self._record_order(is_selling_order)
+        else:
+            logging.info(f"\n{self.symbol} | Nothing sold.\n")
 
-    def sell(self):
+    def _sell(self):
         pass
 
-    def records_selling_movements(self):
-        """This method records buying position in the DB"""
-        # vetchain <=> The engine
-        db_uri = "sqlite:///vetchain.db"
-        vetchain = create_engine(db_uri, echo=True)
-        tb_name = f"{self.symbol}_closed_positions"
-
-        df_position = self.create_df_selling_position()
-
-        # Insert position in Sql database
-        df_position.to_sql(tb_name, con=vetchain, if_exists="append", index=False)
-
-    def create_df_selling_position(self) -> pd.DataFrame:
-        return
