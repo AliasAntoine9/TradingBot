@@ -1,7 +1,7 @@
 from datetime import datetime
 import pandas as pd
 
-from src.utils.tools import DataFrame
+from utils.tools import DataFrame
 
 
 class JsonParser:
