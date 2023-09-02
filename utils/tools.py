@@ -1,5 +1,9 @@
 from dataclasses import dataclass
 import pandas as pd
+from requests import get
+from pathlib import Path
+
+from utils.config import database_url
 
 
 @dataclass
@@ -65,6 +69,9 @@ class PreviousPositions:
 
         for status in ("opened", "closed"):
 
+            endpoint = f"create_{status}_position"
+            url = Path(database_url) / endpoint
 
+            positions = get(url)
 
             setattr(self.df, f"{status}_positions", positions)

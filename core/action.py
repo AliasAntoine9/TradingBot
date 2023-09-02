@@ -1,9 +1,11 @@
 import pandas as pd
-from sqlalchemy import create_engine
 import logging
+from requests import post
+from pathlib import Path
 
 from strategies.rsi.decision_rules import search_candle_to_buy
 from utils.tools import Candle, Position, PreviousPositions
+from utils.config import database_url
 
 logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%Y/%m/%d %H:%M:%S")
 
@@ -56,11 +58,13 @@ class Action:
 
     def _record_order(self, is_selling_record=False) -> None:
         """This method records either buying or selling order into the DB"""
-        api = None
         new_position = self._create_new_position(is_selling_record)
 
+        endpoint = "create_closed_position" if is_selling_record else "create_opened_position"
+        url = Path(database_url) / endpoint
+
         # Insert position in Sql database through the API of the project
-        api.post(new_position, is_selling_record)
+        post(url, data=new_position)
 
 
     def _create_new_position(self, is_selling_record=False) -> pd.DataFrame:
@@ -71,9 +75,10 @@ class Action:
                     "opentime_buying_candle": [self.opentime_buying_candle],
                     "buying_timestamp": [self.buying_timestamp],
                     "buying_price": [self.buying_price],
-                    "target_sales_price": [self.buying_price * 1.02],
+                    "profit_target_in_percentage": [],
                     "bet": [self.bet],
                     "crypto_quantity": [self.crypto_quantity],
+                    "currency_couple": [self.currency_couple]
                 }
             )
         
@@ -85,12 +90,12 @@ class Action:
 
     def _search_selling_signal(self, is_selling_order=True):
         """A selling order is passed when the multiple if condition is respected"""
-        if ...:
-            self._sell()
-            self._send_telegram_notification()
-            self._record_order(is_selling_order)
-        else:
-            logging.info(f"\n{self.symbol} | Nothing sold.\n")
+        # if ...:
+        #     self._sell()
+        #     self._send_telegram_notification()
+        #     self._record_order(is_selling_order)
+        # else:
+        #     logging.info(f"\n{self.symbol} | Nothing sold.\n")
 
     def _sell(self):
         pass
